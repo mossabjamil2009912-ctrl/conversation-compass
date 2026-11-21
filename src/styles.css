@@ -62,6 +62,8 @@
 }
 
 :root {
+  --flow-active: oklch(0.76 0.17 65);
+  --flow-active-foreground: oklch(0.2 0.03 260);
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
@@ -275,3 +277,7 @@
 
 .eq-box .eq-v { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", "Times New Roman", serif; font-size: 14px; font-style: italic; unicode-bidi: isolate; }
 .eq-box .eq-paren { border-radius: 10px / 50%; }
+
+/* خلفية شاشة المحادثة: نقشة تتكرر، وقابلة للنهار والليل */
+.chat-bg { background-image: url("./assets/actes-chat-bg.webp"); background-size: 420px 420px; background-repeat: repeat; }
+.dark .chat-bg { background-image: url("./assets/actes-chat-bg-dark.webp"); }

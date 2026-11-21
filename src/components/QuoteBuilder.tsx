@@ -10,7 +10,7 @@ import { BOT_PRESETS } from "@/lib/bot-presets";
 import { F, applyFormulas, comKey } from "@/lib/formulas";
 import { inverterOptions, inverterForLoad, buildSystem, type InvPick } from "@/lib/sizing";
 import { lvChoices, lvCatalogItem, lvBatOf, LV_BAT_LABELS, type LvBatOpt } from "@/lib/lv-battery";
-import { applyStorage, hvCapacity, storageAvailable, STORAGE_LABELS, type StorageChoice } from "@/lib/storage";
+import { applyStorage, hvCapacity, storageAvailable, STORAGE_LABELS, STORAGE_GROUPS, type StorageChoice, type StorageGroup } from "@/lib/storage";
 import logoClean from "@/assets/actes-logo-clean.png";
 
 type Row = Awaited<ReturnType<typeof listCatalog>>[number];
@@ -261,6 +261,16 @@ export const inverterChoices = (opts: Preset[]): InvChoice[] => {
   return [...m.values()].sort((a, b) => a.kw - b.kw);
 };
 
+// Quote lines follow the equations order: panels, inverters, storage, DC, AC, cable, MC4, then the rest.
+const LINE_ORDER = ["panels", "inverters", "batteries", "racks", "battery_controls", "dc_boxes", "ac_panel", "combiner_panels", "cables", "stands", "panel_mounts", "install_accessories"];
+const lineRank = (l: { key: string; name: string }, cat?: string) => {
+  if (cat === "cables" && /MC4|كنش/i.test(`${l.key} ${l.name}`)) return 8.5;
+  const i = cat ? LINE_ORDER.indexOf(cat) : -1;
+  return i < 0 ? 99 : i;
+};
+export const orderLines = <T extends { key: string; name: string }>(ls: T[], catOf: (l: T) => string | undefined): T[] =>
+  ls.map((l, i) => ({ l, i, r: lineRank(l, catOf(l)) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.l);
+
 function quoteBody(no: string, cust: { name: string; phone: string; city: string }, lines: Line[], notes: string) {
   const total = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const o = location.origin;
@@ -431,6 +441,7 @@ export function QuoteBuilder({ pw, initialCustomerId }: { pw: string; initialCus
   const [loadKw, setLoadKw] = useState("");
   const [hvBase, setHvBase] = useState<Line[] | null>(null); // HV system before the storage choice
   const [storage, setStorage] = useState<StorageChoice>("h112s");
+  const [stGroup, setStGroup] = useState<StorageGroup>("bat");
   const [nightNeed, setNightNeed] = useState<number | null>(null); // customer night kWh — cabinets/Pylontech compare to this
   const getKwh = useServerFn(getKwhPrice);
   const saveKwh = useServerFn(setKwhPrice);
@@ -456,7 +467,8 @@ export function QuoteBuilder({ pw, initialCustomerId }: { pw: string; initialCus
     return m;
   }, [items]);
   const list = (active === "custom" ? [] : byCat[active] ?? []).filter((r) => !q || (r.name + r.key).toLowerCase().includes(q.toLowerCase()));
-  const chosen = Object.values(lines);
+  const catOfLine = (l: Line) => { const k = items.some((r) => r.key === l.key) ? l.key : catalogKeyFor(l); return items.find((r) => r.key === k)?.category; };
+  const chosen = orderLines(Object.values(lines), catOfLine);
   const total = chosen.reduce((s, l) => s + l.price * l.qty, 0);
   const countIn = (k: string) => chosen.filter((l) => (k === "custom" ? l.key.startsWith("CUSTOM_") : byCat[k]?.some((r) => r.key === l.key))).length;
 
@@ -513,6 +525,7 @@ export function QuoteBuilder({ pw, initialCustomerId }: { pw: string; initialCus
   const [preview, setPreview] = useState<{ url: string; name: string; html: string } | null>(null);
   const generate = async (src: Line[] = chosen) => {
     if (!src.length) return setMsg("اختر صنفا واحدا على الأقل");
+    src = orderLines(src, catOfLine);
     setBusy(true); setMsg("جارٍ إنشاء ملف PDF...");
     try {
       const num = no ?? "ACTES-Q-" + Date.now().toString().slice(-6);
@@ -622,7 +635,7 @@ export function QuoteBuilder({ pw, initialCustomerId }: { pw: string; initialCus
     if (!out.length) return setMsg("أصناف هذه المنظومة غير متوفرة في قائمة الأصناف");
     const t = p.type ?? "res", full = withAuto(applyEquations(out, items as EqItem[], catalogKeyFor), t, new Set());
     setQuoteType(t); setDismissed(new Set());
-    setHvBase(hvCapacity(full, items as EqItem[]) > 0 ? full : null); setStorage("h112s");
+    setHvBase(hvCapacity(full, items as EqItem[]) > 0 ? full : null); setStorage("h112s"); setStGroup("bat");
     setLines(Object.fromEntries(full.map((l) => [l.key, l])));
     setShowHist(false);
     void generate(full);
@@ -635,7 +648,14 @@ export function QuoteBuilder({ pw, initialCustomerId }: { pw: string; initialCus
   const lvBat = lvChoices(Object.values(lines), items);
   const pickLvBat = (o: LvBatOpt) => {
     const r = lvCatalogItem(o, items); if (!r) return;
-    const next = Object.values(lines).map((l) => lvBatOf(l.key, l.name) ? { ...l, key: r.key, name: r.name, unit: r.unit ?? l.unit, price: Number(r.price ?? 0), specs: specsOf(r) } : l);
+    let next = Object.values(lines).map((l) => lvBatOf(l.key, l.name) ? { ...l, key: r.key, name: r.name, unit: r.unit ?? l.unit, price: Number(r.price ?? 0), specs: specsOf(r) } : l);
+    // Fidus Pro 5.12 kWh comes without the lithium stand: swap it for the single-phase AC protection panel (and back for UF5000).
+    const swap = (isOld: (l: Line) => boolean, newKey: string) => {
+      const ni = items.find((i) => i.key === newKey); if (!ni || !next.some(isOld)) return;
+      next = next.map((l) => isOld(l) ? { key: ni.key, name: ni.name, unit: ni.unit ?? l.unit, price: Number(ni.price ?? 0), qty: 1, specs: specsOf(ni) } : l);
+    };
+    if (o === "fp") swap((l) => /استند/.test(l.name), "ac_01");
+    if (o === "uf") swap((l) => l.key === "ac_01", "STAND_LITHIUM_6K");
     setLines(Object.fromEntries(next.map((l) => [l.key, l]))); void generate(next);
   };
   const loadQuote = (qt: (typeof quotes)[number]) => {
@@ -690,7 +710,7 @@ export function QuoteBuilder({ pw, initialCustomerId }: { pw: string; initialCus
             <div className="flex flex-wrap gap-1">
               {inverterOptions(items as EqItem[], eq.need, eq.three).map((p) => (
                 <button key={p.key} type="button" onClick={() => pickInv(p)} className="rounded-lg border bg-card px-3 py-1.5 text-right text-xs hover:bg-muted">
-                  <div className="font-bold">{p.units > 1 ? `${p.units}× ` : ""}{p.kw} كيلو {p.hv ? "هاي فولتج" : p.three ? "ثري فاز" : "سنجل فاز"}</div>
+                  <div className="font-bold">{p.units > 1 ? `${p.units} × ` : ""}{p.kw}kw إنفرتر {p.hv ? "هاي فولتج" : p.three ? "ثري فاز" : "سنجل فاز"}</div>
                   <div className="text-muted-foreground">{usd(p.cost)}</div>
                 </button>
               ))}
@@ -736,11 +756,18 @@ export function QuoteBuilder({ pw, initialCustomerId }: { pw: string; initialCus
         {hvBase && (
           <div className="rounded-xl border border-primary/30 bg-card p-2">
             <div className="mb-1 text-xs font-bold">اختر نظام تخزين الطاقة:</div>
+            {(() => { const cap = nightNeed ?? hvCapacity(hvBase, items as EqItem[]); const groups = STORAGE_GROUPS.map((g) => ({ ...g, opts: g.opts.filter((c) => storageAvailable(c, cap)) })).filter((g) => g.opts.length); const cur = groups.find((g) => g.g === stGroup) ?? groups[0]; return (<>
             <div className="flex flex-wrap gap-1">
-              {(Object.keys(STORAGE_LABELS) as StorageChoice[]).filter((c) => storageAvailable(c, nightNeed ?? hvCapacity(hvBase, items as EqItem[]))).map((c) => (
-                <button key={c} type="button" onClick={() => pickStorage(c)} aria-pressed={storage === c} className={`rounded-lg border px-2 py-1 text-xs font-semibold ${storage === c ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>{storage === c ? "✓ " : ""}{STORAGE_LABELS[c]}</button>
+              {groups.map((g) => (
+                <button key={g.g} type="button" onClick={() => { setStGroup(g.g); if (g.opts.length === 1 || g.g === "bat") pickStorage(g.opts[0]!); }} aria-pressed={cur?.g === g.g} className={`rounded-lg border px-2 py-1 text-xs font-semibold ${cur?.g === g.g ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>{cur?.g === g.g ? "✓ " : ""}{g.label}</button>
               ))}
             </div>
+            {cur && cur.g !== "bat" && <div className="mt-1 flex flex-wrap gap-1 border-t pt-1">
+              {cur.opts.map((c) => (
+                <button key={c} type="button" onClick={() => pickStorage(c)} aria-pressed={storage === c} className={`rounded-lg border px-2 py-1 text-xs font-semibold ${storage === c ? "border-primary bg-primary/15" : "bg-card hover:bg-muted"}`}>{storage === c ? "✓ " : ""}{STORAGE_LABELS[c]}</button>
+              ))}
+            </div>}
+            </>); })()}
           </div>
         )}
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">

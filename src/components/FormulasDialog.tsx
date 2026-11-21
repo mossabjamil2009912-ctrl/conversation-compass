@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, Maximize2, Minimize2, ZoomIn, ZoomOut } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFormulas, saveFormulas, getKwhPrice, setKwhPrice, listCatalog } from "@/lib/crm.functions";
@@ -10,6 +10,7 @@ import { PRESETS, comKeyOf, panelsOf, defaultPresetItems } from "@/components/Qu
 
 const RES = BOT_PRESETS.filter((p) => p.type !== "com");
 const COM = PRESETS.filter((p) => p.type === "com");
+const clampZ = (z: number) => Math.min(2.5, Math.max(0.6, Math.round(z * 100) / 100));
 const groupsOf = <T extends { group: string }>(l: T[]) => [...new Set(l.map((p) => p.group))];
 
 // Keeps bracketed English/number parts like "(1500V)" in one piece inside Arabic text.
@@ -163,13 +164,9 @@ export function FormulasDialog({ pw, code, onClose }: { pw: string; code: string
       {need(fx, !single)}
       <Eq n={++n + 1} title="صنف الألواح الشمسية">
         <L>
-          <Ln l={<>قدرة الألواح <V>kWp</V></>}><Fr n="الاستهلاك اليومي" d="ساعات الإشعاع" /></Ln>
-          <Ln l="العدد الأولي"><Ceil><Fr n={<R><V>kWp</V><O c="×" /><V>1000</V></R>} d="قدرة اللوح" /></Ceil></Ln>
-          <Ln l="أقصى ألواح بالاسترنق"><Floor><Fr n="أقصى جهد الإنفرتر" d={<R><V>Voc</V><O c="×" />معامل الحرارة</R>} /></Floor></Ln>
-          <Ln l="عدد الاسترنقات"><Ceil><Fr n="العدد الأولي" d="أقصى ألواح بالاسترنق" /></Ceil></Ln>
-          <Ln l="ألواح كل استرنق"><Ceil><Fr n="العدد الأولي" d="عدد الاسترنقات" /></Ceil></Ln>
-          <Ln l="الألواح النهائية">عدد الاسترنقات<O c="×" />ألواح كل استرنق</Ln>
-          <Nt>الأعداد تُقرَّب للأعلى، وأقصى ألواح بالاسترنق يُقرَّب للأسفل</Nt>
+          <Ln l="إجمالي عدد الألواح"><Ceil><Fr n={<R>الاستهلاك اليومي<O c="×" /><V>1000</V></R>} d={<R>ساعات الإشعاع<O c="×" />قدرة اللوح</R>} /></Ceil></Ln>
+          <Ln l="سعة الاسترنق (أقصى ألواح بالسلسلة)"><Floor><Fr n="أقصى جهد الإنفرتر" d={<R><V>Voc</V><O c="×" />معامل الحرارة</R>} /></Floor></Ln>
+          <Nt>تُوزَّع الألواح بالتساوي على الاسترنقات مع التقريب للأعلى</Nt>
         </L>
         <Num label="ساعات الإشعاع اليومي" value={fx.sun} onChange={(v) => up({ sun: v })} />
         <Num label="قدرة اللوح (واط)" value={fx.panelW} onChange={(v) => up({ panelW: v })} />
@@ -182,55 +179,72 @@ export function FormulasDialog({ pw, code, onClose }: { pw: string; code: string
       </Eq>
       <Eq n={++n + 1} title={hv ? "صنف إنفرتر الجهد العالي" : single ? "صنف الإنفرتر (Single Phase 8 / 12)" : "صنف الإنفرتر"}>
         <L>
-          <Ln l="القدرة المطلوبة">الأكبر من<P>حمل الذروة<O c="،" /><Fr n={<V>kWp</V>} d="نسبة الألواح للإنفرتر" /></P></Ln>
+          <Ln l="القدرة المطلوبة">الأكبر من<P>حمل الذروة<O c="،" /><Fr n="إجمالي قدرة الألواح" d="نسبة الألواح للإنفرتر" /></P></Ln>
           <Ln l="عدد الإنفرترات"><Ceil><Fr n="القدرة المطلوبة" d="قدرة الإنفرتر" /></Ceil></Ln>
           <Nt>عدد الإنفرترات لا يتجاوز الحد الأقصى بالتوازي</Nt>
           <Nt>{hv ? "يُستخدم الهاي فولتج عندما تتجاوز القدرة حد الجهد المنخفض" : "جهد منخفض ما دامت القدرة ≤ حد الجهد المنخفض"}</Nt>
-          <Nt>يُختار الأرخص من الخيارات المناسبة</Nt>
         </L>
         <Num label="نسبة الألواح إلى الإنفرتر (دايا)" value={fx.dcRatio} onChange={(v) => up({ dcRatio: v })} />
         <Num label="نسبة الألواح إلى الإنفرتر (سوليس)" value={fx.dcRatioSolis} onChange={(v) => up({ dcRatioSolis: v })} />
         <Num label="أقصى قدرة للجهد المنخفض (كيلو)" value={fx.lvMaxKw} onChange={(v) => up({ lvMaxKw: v })} />
         <Num label="أقصى عدد إنفرترات بالتوازي" value={fx.maxInverters} onChange={(v) => up({ maxInverters: Math.round(v) })} />
       </Eq>
-      <Eq n={++n + 1} title={hv ? "صنف بطاريات الجهد العالي" : "صنف بطاريات الليثيوم"}>
+      <Eq n={++n + 1} title={hv ? "نظام التخزين" : "صنف بطاريات الليثيوم"}>
         <L>
-          <Ln l="استهلاك الليل">الاستهلاك اليومي<O c="×" />نسبة الليل</Ln>
+          {hv && <Nt>السعة المطلوبة</Nt>}
+          <Ln l={hv ? "السعة (استهلاك الليل)" : "استهلاك الليل"}>الاستهلاك اليومي<O c="×" />نسبة الليل</Ln>
+          {hv && <Nt>خيار 1 — راكات Hithium 16 HV (الافتراضي)</Nt>}
           {(() => {
             const c = <Ceil><Fr n={<R>استهلاك الليل<O c="−" />السماحية</R>} d={<R>سعة البطارية<O c="×" />التفريغ</R>} /></Ceil>;
             return <Ln l="عدد البطاريات">{hv ? <>الأكبر من<P>أقل عدد<O c="،" />{c}</P></> : c}</Ln>;
           })()}
+          {hv && <>
+            <Nt>خيار 2 — راكات Pylontech M1 أو M5</Nt>
+            <Nt>خيار 3 — كبائن التخزين (Hithium 112C · Pylontech 261 · Pylontech 313)</Nt>
+            <Ln l="عدد الكبائن">أقرب عدد صحيح لـ<P><Fr n="السعة" d="سعة الكبينة" /></P></Ln>
+            <Ln l="الفرق"><P>السعة<O c="−" />عدد الكبائن<O c="×" />سعة الكبينة</P></Ln>
+            <Nt>تظهر الكبينة فقط إذا كان الفرق بين −السماحية و +السماحية، وإلا تختفي</Nt>
+          </>}
         </L>
         <Num label="نسبة الليل عند اختيار 30% ليل" value={fx.night[30]} onChange={(v) => up({ night: { ...fx.night, 30: v } })} />
         <Num label="نسبة الليل عند اختيار 50/50" value={fx.night[50]} onChange={(v) => up({ night: { ...fx.night, 50: v } })} />
         <Num label="نسبة الليل عند اختيار 70% ليل" value={fx.night[70]} onChange={(v) => up({ night: { ...fx.night, 70: v } })} />
         <Num label="معامل تفريغ البطارية" value={fx.dod} onChange={(v) => up({ dod: Math.min(v, 1) })} />
-        <Num label="سعة البطارية (كيلووات ساعة)" value={fx.batKwh} onChange={(v) => up({ batKwh: v })} />
+        <Num label={hv ? "سعة بطارية Hithium 16 HV (كيلووات ساعة)" : "سعة البطارية (كيلووات ساعة)"} value={fx.batKwh} onChange={(v) => up({ batKwh: v })} />
         <Num label="سماحية نقص الليل (كيلووات ساعة)" value={fx.batTol} onChange={(v) => up({ batTol: v })} />
-        {hv && <Num label="أقل عدد بطاريات هاي فولتج" value={fx.hvMinBat} onChange={(v) => up({ hvMinBat: Math.round(v) })} />}
+        {hv && <>
+          <Num label="أقل عدد بطاريات Hithium 16 HV" value={fx.hvMinBat} onChange={(v) => up({ hvMinBat: Math.round(v) })} />
+          <Num label="سعة كبينة Hithium 112C (كيلووات ساعة)" value={fx.cabKwh} onChange={(v) => up({ cabKwh: v })} />
+          <Num label="سماحية الكبائن ± (كيلووات ساعة)" value={fx.cabTol} onChange={(v) => up({ cabTol: v })} />
+          <Num label="سعة بطارية بايلونتك M1 (كيلووات ساعة)" value={fx.m1Kwh} onChange={(v) => up({ m1Kwh: v })} />
+          <Num label="سعة بطارية بايلونتك M5 (كيلووات ساعة)" value={fx.m5Kwh} onChange={(v) => up({ m5Kwh: v })} />
+        </>}
       </Eq>
-      {hv && <Eq n={++n + 1} title="نظام التخزين (سؤال العميل)">
+      {hv && <Eq n={++n + 1} title="صنف بطاريات وراك بايلونتك M1">
         <L>
-          <Nt>الخطوة 1 — السعة المطلوبة</Nt>
-          <Ln l="السعة">عدد بطاريات الهاي فولتج<O c="×" />سعة البطارية</Ln>
-          <Nt>الخطوة 2 — راكات Hithium 112S (الافتراضي): نفس البطاريات والكنترولات المحسوبة أعلاه</Nt>
-          <Nt>الخطوة 3 — راكات بايلونتك</Nt>
-          <Ln l={<>بطاريات <V>M1</V></>}>الأكبر من<P><V>6</V><O c="،" /><Fr n="السعة" d={<R>سعة <V>M1</V></R>} /></P></Ln>
-          <Nt>تُستخدم M1 عندما السعة ≤ حد M1 · راك 13 حتى 13 بطارية، وإلا راك 23 · كنترول وطقم واحد</Nt>
-          <Ln l={<>بطاريات <V>M5</V></>}>الأكبر من<P><V>7</V><O c="،" /><Fr n="السعة" d={<R>سعة <V>M5</V></R>} /></P></Ln>
-          <Ln l={<>راكات <V>M5</V></>}><Fr n={<R>بطاريات <V>M5</V></R>} d={<V>20</V>} /></Ln>
-          <Nt>تُستخدم M5 عندما السعة أكبر من حد M1 · راك 11 أو 16 أو 20 · كنترول وطقم لكل راك</Nt>
-          <Nt>الخطوة 4 — الكبائن (Hithium 112C · Pylontech 261 · Pylontech 313)</Nt>
-          <Ln l="عدد الكبائن">أقرب عدد صحيح لـ<P><Fr n="السعة" d="سعة الكبينة" /></P></Ln>
-          <Ln l="الفرق"><P>السعة<O c="−" />عدد الكبائن<O c="×" />سعة الكبينة</P></Ln>
-          <Nt>تظهر الكبينة فقط إذا كان الفرق بين −السماحية و +السماحية، وإلا تختفي</Nt>
-          <Nt>كل الأعداد تُقرَّب للأعلى ما عدا عدد الكبائن (لأقرب عدد)</Nt>
+          <Ln l={<>بطاريات <V>M1</V></>}>الأكبر من<P><V>{fx.m1MinBat}</V><O c="،" /><Fr n="السعة" d={<R>سعة <V>M1</V></R>} /></P></Ln>
+          <Ln l={<>عدد راكات <V>M1</V></>}><Ceil><Fr n={<R>بطاريات <V>M1</V></R>} d={<V>{fx.m1MaxBat}</V>} /></Ceil></Ln>
+          <Ln l="بطاريات كل راك"><Ceil><Fr n="البطاريات" d="عدد الراكات" /></Ceil></Ln>
+          <Ln l="مقاس الراك">راك <V>{fx.m1RackSmall}</V> إذا بطاريات كل راك ≤ <V>{fx.m1RackSmall}</V></Ln>
+          <Ln l="">راك <V>{fx.m1MaxBat}</V> إذا بطاريات كل راك أكبر من <V>{fx.m1RackSmall}</V></Ln>
         </L>
-        <Num label="سعة كبينة Hithium 112C (كيلووات ساعة)" value={fx.cabKwh} onChange={(v) => up({ cabKwh: v })} />
-        <Num label="سماحية الكبائن ± (كيلووات ساعة)" value={fx.cabTol} onChange={(v) => up({ cabTol: v })} />
-        <Num label="سعة بطارية بايلونتك M1 (كيلووات ساعة)" value={fx.m1Kwh} onChange={(v) => up({ m1Kwh: v })} />
-        <Num label="سعة بطارية بايلونتك M5 (كيلووات ساعة)" value={fx.m5Kwh} onChange={(v) => up({ m5Kwh: v })} />
-        <Num label="حد استخدام M1 (كيلووات ساعة)" value={fx.m1MaxKwh} onChange={(v) => up({ m1MaxKwh: v })} />
+        <Num label="أقل عدد بطاريات M1" value={fx.m1MinBat} onChange={(v) => up({ m1MinBat: Math.round(v) })} />
+        <Num label="سعة الراك الصغير M1 (بطارية)" value={fx.m1RackSmall} onChange={(v) => up({ m1RackSmall: Math.round(v) })} />
+        <Num label="أقصى عدد بطاريات M1 (الراك الكبير)" value={fx.m1MaxBat} onChange={(v) => up({ m1MaxBat: Math.round(v), m1MaxKwh: Math.round(v) * fx.m1Kwh })} />
+      </Eq>}
+      {hv && <Eq n={++n + 1} title="صنف بطاريات وراك بايلونتك M5">
+        <L>
+          <Ln l={<>بطاريات <V>M5</V></>}>الأكبر من<P><V>{fx.m5MinBat}</V><O c="،" /><Fr n="السعة" d={<R>سعة <V>M5</V></R>} /></P></Ln>
+          <Ln l={<>عدد راكات <V>M5</V></>}><Ceil><Fr n={<R>بطاريات <V>M5</V></R>} d={<V>{fx.m5MaxBat}</V>} /></Ceil></Ln>
+          <Ln l="بطاريات كل راك"><Ceil><Fr n="البطاريات" d="عدد الراكات" /></Ceil></Ln>
+          <Ln l="مقاس الراك">راك <V>{fx.m5RackSmall}</V> إذا بطاريات كل راك ≤ <V>{fx.m5RackSmall}</V></Ln>
+          <Ln l="">راك <V>{fx.m5RackMedium}</V> إذا بطاريات كل راك ≤ <V>{fx.m5RackMedium}</V></Ln>
+          <Ln l="">راك <V>{fx.m5MaxBat}</V> إذا بطاريات كل راك أكبر من <V>{fx.m5RackMedium}</V></Ln>
+        </L>
+        <Num label="أقل عدد بطاريات M5" value={fx.m5MinBat} onChange={(v) => up({ m5MinBat: Math.round(v) })} />
+        <Num label="سعة الراك الصغير M5 (بطارية)" value={fx.m5RackSmall} onChange={(v) => up({ m5RackSmall: Math.round(v) })} />
+        <Num label="سعة الراك الوسط M5 (بطارية)" value={fx.m5RackMedium} onChange={(v) => up({ m5RackMedium: Math.round(v) })} />
+        <Num label="أقصى بطاريات في راك M5" value={fx.m5MaxBat} onChange={(v) => up({ m5MaxBat: Math.round(v) })} />
       </Eq>}
       {hv && <Eq n={++n + 1} title="صنف كنترول الهاي فولتج BCU">
         <L>
@@ -241,9 +255,7 @@ export function FormulasDialog({ pw, code, onClose }: { pw: string; code: string
       </Eq>}
       {hv && <Eq n={++n + 1} title="صنف كنترول الربط الإضافي EBC">
         <L>
-          <Ln l="بطاريات الكنترول الأخير">عدد البطاريات<O c="−" /><P>عدد <V>BCU</V><O c="−" /><V>1</V></P><O c="×" />بطاريات كل كنترول</Ln>
           <Ln l={<>عدد <V>EBC</V></>}>عدد الكنترولات التي فيها أكثر من <V>{fx.ebcOver}</V> بطاريات</Ln>
-          <Nt>مثال: 22 بطارية ← كنترول فيه 15 بطارية يأخذ كنترول ربط، وكنترول فيه 7 بطاريات بدونه · النتيجة: كنترولين وكنترول ربط واحد</Nt>
         </L>
         <Num label="يحتاج EBC إذا زادت بطاريات الكنترول عن" value={fx.ebcOver} onChange={(v) => up({ ebcOver: Math.round(v) })} />
       </Eq>}
@@ -252,11 +264,12 @@ export function FormulasDialog({ pw, code, onClose }: { pw: string; code: string
       </Eq>}
       <Eq n={++n + 1} title={hv ? "صنف صناديق حماية DC (1500V)" : "صنف صندوق حماية DC"}>
         <L>
-          <Ln l="عدد الصناديق"><Ceil><Fr n="الاسترنقات" d="أقصى خطوط الصندوق" /></Ceil></Ln>
-          <Ln l="خطوط الصندوق"><Ceil><Fr n="الاسترنقات" d={<R>الصناديق<O c="×" />خطوة التقريب</R>} /></Ceil><O c="×" />خطوة التقريب</Ln>
+          <Ln l="عدد الصناديق"><Ceil><Fr n="عدد الاسترنقات" d="أقصى خطوط الصندوق" /></Ceil></Ln>
+          <Ln l="خطوط الصندوق"><Fr n="عدد الاسترنقات" d="عدد الصناديق" /></Ln>
+          <Nt>تُقرَّب خطوط الصندوق لأقرب مقاس زوجي أعلى: 2 · 4 · 6 · 8 · 10</Nt>
         </L>
-        <Num label="أقصى عدد خطوط للصندوق" value={fx.dcMaxLines} onChange={(v) => up({ dcMaxLines: v })} />
-        <Num label="خطوة التقريب (خطوط)" value={fx.dcStep} onChange={(v) => up({ dcStep: v })} />
+        <Num label="أقصى خطوط للصندوق الواحد" value={fx.dcMaxLines} onChange={(v) => up({ dcMaxLines: v })} />
+        <Num label="تدرج مقاسات الصناديق (خطوط)" value={fx.dcStep} onChange={(v) => up({ dcStep: v })} />
       </Eq>
       <Eq n={++n + 1} title="صنف لوحة AC / لوحة التجميع">
         <L>
@@ -269,8 +282,8 @@ export function FormulasDialog({ pw, code, onClose }: { pw: string; code: string
         <Num label="معامل الأمان" value={fx.acSafety} onChange={(v) => up({ acSafety: v })} />
       </Eq>
       <Eq n={++n + 1} title="صنف الكابل">
-        <L><Ln l="أمتار الكابل">عدد الإنفرترات<O c="×" />متر لكل إنفرتر</Ln></L>
-        <Num label="متر كابل لكل إنفرتر" value={fx.cableM} onChange={(v) => up({ cableM: v })} />
+        <L><Ln l="أمتار الكابل">ثابت</Ln></L>
+        <Num label="أمتار الكابل في العرض" value={fx.cableM} onChange={(v) => up({ cableM: v })} />
       </Eq>
       <Eq n={++n + 1} title="صنف كنشات MC4">
         <L><Ln l={<>أطقم <V>MC4</V></>}>عدد الاسترنقات<O c="×" />أطقم لكل استرنق</Ln></L>
@@ -279,12 +292,41 @@ export function FormulasDialog({ pw, code, onClose }: { pw: string; code: string
     </>);
   };
 
+  const [full, setFull] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const boxRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = boxRef.current; if (!el) return;
+    // Ctrl/⌘ + mouse wheel (and laptop touchpad pinch) zooms the content.
+    const wheel = (e: WheelEvent) => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); setZoom((z) => clampZ(z * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); };
+    // Two-finger pinch on touch screens.
+    let d0 = 0, z0 = 1;
+    const dist = (t: TouchList) => Math.hypot(t[0]!.clientX - t[1]!.clientX, t[0]!.clientY - t[1]!.clientY);
+    const ts = (e: TouchEvent) => { if (e.touches.length === 2) { d0 = dist(e.touches); setZoom((z) => (z0 = z)); } };
+    const tm = (e: TouchEvent) => { if (e.touches.length === 2 && d0) { e.preventDefault(); const r = dist(e.touches) / d0; setZoom(clampZ(z0 * r)); } };
+    const te = () => { d0 = 0; };
+    el.addEventListener("wheel", wheel, { passive: false });
+    el.addEventListener("touchstart", ts, { passive: true });
+    el.addEventListener("touchmove", tm, { passive: false });
+    el.addEventListener("touchend", te);
+    return () => { el.removeEventListener("wheel", wheel); el.removeEventListener("touchstart", ts); el.removeEventListener("touchmove", tm); el.removeEventListener("touchend", te); };
+  }, []);
+
   const small = RES.map((p, i) => (/^إنفرتر (1\.6|6\.2) /.test(p.group) ? i : -1)).filter((i) => i >= 0);
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-2" onClick={onClose}>
-      <div className="flex max-h-[92vh] w-full max-w-lg flex-col gap-2 rounded-xl border border-border bg-card p-3 text-card-foreground shadow-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between"><h2 className="font-bold">المعادلات</h2><button onClick={onClose} aria-label="إغلاق"><X className="h-4 w-4" /></button></div>
+    <div dir="rtl" className={`fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 ${full ? "p-0" : "p-2"}`} onClick={onClose}>
+      <div ref={boxRef} className={`flex flex-col gap-2 border border-border bg-card p-3 text-card-foreground shadow-lg ${full ? "h-full w-full rounded-none" : "max-h-[92vh] w-full max-w-lg rounded-xl"}`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-2"><h2 className="font-bold">المعادلات</h2>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setZoom((z) => clampZ(z - 0.1))} aria-label="تصغير" className="rounded-md border border-border p-1"><ZoomOut className="h-4 w-4" /></button>
+            <button onClick={() => setZoom(1)} className="min-w-12 rounded-md border border-border px-1 py-0.5 text-[11px] font-bold" aria-label="الحجم الأصلي">{Math.round(zoom * 100)}%</button>
+            <button onClick={() => setZoom((z) => clampZ(z + 0.1))} aria-label="تكبير" className="rounded-md border border-border p-1"><ZoomIn className="h-4 w-4" /></button>
+            <button onClick={() => setFull(!full)} aria-label={full ? "تصغير النافذة" : "ملء الشاشة"} className="rounded-md border border-border p-1">{full ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+            <button onClick={onClose} aria-label="إغلاق" className="p-1"><X className="h-4 w-4" /></button>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-2" style={{ zoom }}>
         <div className="grid grid-cols-2 gap-1 text-[11px] font-semibold">
           {([["eq", "تعديل المعادلات"], ["ranges", "تعديل النطاقات"]] as const).map(([k, l]) => (
             <button key={k} onClick={() => setView(k)} className={`rounded-lg px-1 py-1.5 ${view === k ? "bg-ink text-ink-foreground" : "bg-muted"}`}>{l}</button>
@@ -355,6 +397,7 @@ export function FormulasDialog({ pw, code, onClose }: { pw: string; code: string
               {comSub === "hv" && items(f, true)}
             </div>
           )}
+        </div>
         </div>
         {msg && <p className={`text-xs ${msg.ok ? "text-primary" : "text-destructive"}`}>{msg.t}</p>}
         <div className="flex gap-2">

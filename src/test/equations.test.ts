@@ -6,7 +6,7 @@ const L = (key: string, qty: number) => ({ key, name: key, unit: null, price: 1,
 const run = (pv: number, inv: number) => applyEquations([L("PV", pv), L("INV", inv), L("DCBOX_1500_6", 1), L("ac_05", 1), L("cable", 20), L("mc4_connector", 3)], items, () => null, DEFAULT_FORMULAS);
 describe("equation items", () => {
   it("14 strings → 2 DC boxes of 8 lines", () => { const o = run(126, 2); expect(o.find((l) => l.key.startsWith("DCBOX"))).toMatchObject({ key: "DCBOX_1500_8", qty: 2 }); });
-  it("cable = 1 m per inverter", () => expect(run(126, 2).find((l) => l.key === "cable")!.qty).toBe(2));
+  it("cable stays 1 m even with 2 inverters", () => expect(run(126, 2).find((l) => l.key === "cable")!.qty).toBe(1));
   it("MC4 = strings × sets per string", () => expect(run(126, 2).find((l) => l.key === "mc4_connector")!.qty).toBe(14));
   it("2 inverters → combiner panel", () => expect(run(126, 2).some((l) => l.key === "ac_06")).toBe(true));
 });

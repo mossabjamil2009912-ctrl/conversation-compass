@@ -48,7 +48,6 @@ import { Users as UsersIcon } from "lucide-react";
 import logo from "@/assets/actes-logo.png";
 import logoClean from "@/assets/actes-logo-clean.png";
 import logoWhite from "@/assets/actes-logo-white.png";
-import waBg from "@/assets/actes-wa-bg.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -618,7 +617,7 @@ function Chat({ pw, c, onBack, onInfo }: { pw: string; c: Cust; onBack: () => vo
             className={`flex shrink-0 items-center justify-center rounded-full p-1 ${paused ? "bg-destructive text-destructive-foreground" : "hover:bg-wa-bot"}`}><Bot className="h-3.5 w-3.5" /></button>
           {onInfo && <button onClick={onInfo} aria-label="تفاصيل العميل" className="shrink-0 rounded-full p-1 hover:bg-wa-bot"><Info className="h-3.5 w-3.5" /></button>}
         </div>
-        <div ref={box} onLoadCapture={() => { const el = box.current; if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 400) el.scrollTop = el.scrollHeight; }} data-scroll data-chat-scroll className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain bg-cover bg-center p-2.5 text-[12.5px]" style={{ backgroundImage: `url(${waBg.url})` }}>
+        <div ref={box} onLoadCapture={() => { const el = box.current; if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 400) el.scrollTop = el.scrollHeight; }} data-scroll data-chat-scroll className="chat-bg min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain p-2.5 text-[12.5px]">
         {msgs.map((m, i) => (
           <div key={m.id}>
           {(i === 0 || new Date(msgs[i - 1]!.created_at).toDateString() !== new Date(m.created_at).toDateString()) && (

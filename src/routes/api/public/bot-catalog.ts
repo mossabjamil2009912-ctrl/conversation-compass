@@ -38,11 +38,13 @@ export const Route = createFileRoute("/api/public/bot-catalog")({
         try { fv = fr?.text_value ? JSON.parse(fr.text_value) : null; } catch { fv = null; }
         const FORMULAS = mergeFormulas(fv);
         // Edited bot texts from the "المسار" screen: TEXT = [original fragment, new], BTN = [button id, original title, new title, new desc].
-        const { data: bt } = await supabaseAdmin.from("bot_texts").select("kind,original,value,btn_id,desc_value");
-        const BOT_TEXTS = { TEXT: [] as [string, string][], BTN: [] as [string, string, string | null, string | null][] };
+        const { data: bt } = await supabaseAdmin.from("bot_texts").select("key,kind,original,value,btn_id,desc_value,place");
+        const BOT_TEXTS = { TEXT: [] as [string, string][], BTN: [] as [string, string, string | null, string | null][], DEL: [] as [string, string, { msg: string[]; sibs: string[] }][] };
         for (const r of bt ?? []) {
+          // Per-step deletes: [button id, original title, scope] — the bot drops the button only in matching messages.
+          if (r.kind === "button" && r.key.includes("@")) { try { BOT_TEXTS.DEL.push([r.btn_id ?? "", r.original, JSON.parse(r.place ?? "{}")]); } catch { /* skip bad scope */ } continue; }
           if (r.kind === "button") BOT_TEXTS.BTN.push([r.btn_id ?? "", r.original, r.value, r.desc_value]);
-          else if (r.value != null) BOT_TEXTS.TEXT.push([r.original, r.value]);
+          else if (r.value != null) BOT_TEXTS.TEXT.push([r.original, r.value === "__DEL__" ? "" : r.value]); // deleted step text is dropped
         }
         BOT_TEXTS.TEXT.sort((a, b) => b[0].length - a[0].length);
         // Added steps: shown when the customer presses trigger_id (title matched against original or edited title).
@@ -51,7 +53,11 @@ export const Route = createFileRoute("/api/public/bot-catalog")({
           const edited = BOT_TEXTS.BTN.find((b) => b[0] === s.trigger_id && b[1] === s.trigger_title)?.[2];
           return { ...s, trigger_titles: [s.trigger_title, edited].filter(Boolean) };
         });
-        return Response.json({ settings: { kwh_price }, KWH_PRICE: kwh_price, updated_at: new Date().toISOString(), ITEM_PRICES: prices, ITEMS: items, CATALOG_FILES: files, AUTO_RULES: autoRules, BOT_TEXTS, BOT_STEPS, FORMULAS });
+        const { data: hi } = await supabaseAdmin.from("app_settings").select("text_value").eq("key", "header_image").maybeSingle();
+        let hv = "2";
+        try { hv = String(JSON.parse(hi?.text_value ?? "{}").v ?? "2"); } catch { hv = "2"; }
+        const HEADER_IMAGE_URL = `${origin}/api/public/header-image?v=${hv}`;
+        return Response.json({ HEADER_IMAGE_URL, settings: { kwh_price }, KWH_PRICE: kwh_price, updated_at: new Date().toISOString(), ITEM_PRICES: prices, ITEMS: items, CATALOG_FILES: files, AUTO_RULES: autoRules, BOT_TEXTS, BOT_STEPS, FORMULAS });
       },
     },
   },

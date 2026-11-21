@@ -155,7 +155,7 @@ function applyEquationsInner<L extends EqLine>(lines: L[], ok: EqItem[], keyOf: 
       return void out.push(pick ? as(l, pick, qty) : l);
     }
     if (/mc4/i.test(r.key)) return void out.push({ ...l, qty: strings * f.mc4PerString });
-    if (r.category === "cables") return void out.push({ ...l, qty: f.cableM * invQty });
+    if (r.category === "cables") return void out.push({ ...l, qty: f.cableM });
     if (r.category === "ac_panel" || r.category === "combiner_panels") {
       const want = invQty >= 2 ? "combiner_panels" : "ac_panel";
       if (r.category === want) return void out.push({ ...l, qty: 1 });

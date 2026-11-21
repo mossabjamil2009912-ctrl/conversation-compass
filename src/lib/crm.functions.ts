@@ -714,6 +714,37 @@ export const saveBotText = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Per-step button delete: row key "<button key>@<step id>", place = JSON scope the bot matches
+// (original message fragments of that step + its other buttons), so the button disappears only there.
+export const saveBotButtonDelete = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({
+    pw: z.string(), key: z.string().max(40), scoped: z.string().max(60), on: z.boolean(),
+    msg: z.array(z.string().max(40)).max(20), sibs: z.array(z.string().max(40)).max(20), fixed: z.array(z.string().max(60)).max(10),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    check(data.pw);
+    const all = (await import("@/lib/bot-texts.json")).default as { k: string; m: string; t: string; s: string; o: string; b?: string }[];
+    const by = new Map(all.map((r) => [r.k, r]));
+    const row = by.get(data.key);
+    if (!row || row.t !== "b" || !data.scoped.startsWith(data.key + "@")) throw new Error("زر غير معروف");
+    const { supabaseAdmin } = await import("@/lib/db.server");
+    if (!data.on) {
+      const { error } = await supabaseAdmin.from("bot_texts").delete().eq("key", data.scoped);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    const scope = {
+      msg: data.msg.map((k) => by.get(k)?.o.trim()).filter((x): x is string => !!x),
+      sibs: [...data.sibs.map((k) => by.get(k)).filter((r) => r?.t === "b").map((r) => r!.b ?? r!.o), ...data.fixed],
+    };
+    const { error } = await supabaseAdmin.from("bot_texts").upsert({
+      key: data.scoped, msg_key: row.m, kind: "button", section: row.s, original: row.o,
+      btn_id: row.b ?? null, value: "__DEL__", place: JSON.stringify(scope), updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // Added steps ("المسار" phase 2): a custom message with buttons/list shown after a bot button is pressed.
 const stepOption = z.object({
   title: z.string().trim().min(1).max(24), desc: z.string().max(72).optional(),
@@ -847,4 +878,31 @@ export const saveFormulas = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("app_settings").upsert({ key: "formulas", value: 0, text_value: JSON.stringify(f), updated_at: new Date().toISOString() });
     if (error) throw new Error(error.message);
     return { formulas: f };
+  });
+
+// Bot message header image: stored in crm-attachments, path + version in app_settings key `header_image`.
+export const getHeaderImage = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ pw: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    check(data.pw);
+    const { supabaseAdmin } = await import("@/lib/db.server");
+    const { data: r } = await supabaseAdmin.from("app_settings").select("text_value").eq("key", "header_image").maybeSingle();
+    let v = "2";
+    try { v = String(JSON.parse(r?.text_value ?? "{}").v ?? "2"); } catch { /* default */ }
+    return { url: `/api/public/header-image?v=${v}` };
+  });
+
+export const saveHeaderImage = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ pw: z.string(), b64: z.string().max(12_000_000), mime: z.enum(["image/jpeg", "image/png"]) }).parse(d))
+  .handler(async ({ data }) => {
+    check(data.pw);
+    const { supabaseAdmin } = await import("@/lib/db.server");
+    const bin = Uint8Array.from(atob(data.b64), (ch) => ch.charCodeAt(0));
+    const v = String(Date.now());
+    const path = `header-image/${v}.${data.mime === "image/png" ? "png" : "jpg"}`;
+    const up = await supabaseAdmin.storage.from("crm-attachments").upload(path, bin, { contentType: data.mime });
+    if (up.error) throw new Error("تعذّر رفع الصورة");
+    const { error } = await supabaseAdmin.from("app_settings").upsert({ key: "header_image", value: 0, text_value: JSON.stringify({ path, v, mime: data.mime }), updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+    return { url: `/api/public/header-image?v=${v}` };
   });
