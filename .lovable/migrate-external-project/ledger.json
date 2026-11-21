@@ -1,0 +1,65 @@
+[
+  {
+    "capability": "code",
+    "source": "github mossabjamil2009912-ctrl/actes-crm",
+    "outcome": "migrate",
+    "status": "verified",
+    "next_action": null
+  },
+  {
+    "capability": "schema",
+    "source": "connected backend already holds all ACTES tables",
+    "outcome": "keep",
+    "status": "verified",
+    "next_action": null
+  },
+  {
+    "capability": "records",
+    "source": "github actes-crm-data-backup (2026-11-18)",
+    "outcome": "keep",
+    "status": "verified",
+    "next_action": "every backup row already present in the connected backend, which also has newer rows; nothing overwritten"
+  },
+  {
+    "capability": "uploaded files",
+    "source": "crm-attachments bucket",
+    "outcome": "keep",
+    "status": "verified",
+    "next_action": "7 files already in bucket"
+  },
+  {
+    "capability": "auth",
+    "source": "single dashboard password (DASHBOARD_PASSWORD)",
+    "outcome": "keep",
+    "status": "verified",
+    "next_action": null
+  },
+  {
+    "capability": "n8n bot endpoints",
+    "source": "/api/public/bot-*",
+    "outcome": "keep",
+    "status": "pending",
+    "next_action": "secret saved and verified; publish; point n8n at the new published URL"
+  },
+  {
+    "capability": "github backup job",
+    "source": "/api/public/jobs/github-backup",
+    "outcome": "keep",
+    "status": "pending",
+    "next_action": "needs GitHub connector (GITHUB_API_KEY) and a daily schedule"
+  },
+  {
+    "capability": "AI",
+    "source": "LOVABLE_API_KEY",
+    "outcome": "keep",
+    "status": "verified",
+    "next_action": null
+  },
+  {
+    "capability": "cutover",
+    "source": "old hosts actes-crm.lovable.app / workflow-whisperer-36",
+    "outcome": "keep",
+    "status": "pending",
+    "next_action": "user decides after publish"
+  }
+]
