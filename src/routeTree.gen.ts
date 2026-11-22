@@ -26,6 +26,7 @@ import { Route as ApiPublicBotPausedRouteImport } from './routes/api/public/bot-
 import { Route as ApiPublicBotReportRequestRouteImport } from './routes/api/public/bot-report-request'
 import { Route as ApiPublicBotTicketRouteImport } from './routes/api/public/bot-ticket'
 import { Route as ApiPublicCatalogAssistantRouteImport } from './routes/api/public/catalog-assistant'
+import { Route as ApiPublicCatalogCoverRouteImport } from './routes/api/public/catalog-cover'
 import { Route as ApiPublicCrmMediaRouteImport } from './routes/api/public/crm-media'
 import { Route as ApiPublicDesktopAppRouteImport } from './routes/api/public/desktop-app'
 import { Route as ApiPublicHeaderImageRouteImport } from './routes/api/public/header-image'
@@ -118,6 +119,11 @@ const ApiPublicCatalogAssistantRoute =
     path: '/api/public/catalog-assistant',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCatalogCoverRoute = ApiPublicCatalogCoverRouteImport.update({
+  id: '/api/public/catalog-cover',
+  path: '/api/public/catalog-cover',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCrmMediaRoute = ApiPublicCrmMediaRouteImport.update({
   id: '/api/public/crm-media',
   path: '/api/public/crm-media',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/api/public/bot-report-request': typeof ApiPublicBotReportRequestRoute
   '/api/public/bot-ticket': typeof ApiPublicBotTicketRoute
   '/api/public/catalog-assistant': typeof ApiPublicCatalogAssistantRoute
+  '/api/public/catalog-cover': typeof ApiPublicCatalogCoverRoute
   '/api/public/crm-media': typeof ApiPublicCrmMediaRoute
   '/api/public/desktop-app': typeof ApiPublicDesktopAppRoute
   '/api/public/header-image': typeof ApiPublicHeaderImageRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/api/public/bot-report-request': typeof ApiPublicBotReportRequestRoute
   '/api/public/bot-ticket': typeof ApiPublicBotTicketRoute
   '/api/public/catalog-assistant': typeof ApiPublicCatalogAssistantRoute
+  '/api/public/catalog-cover': typeof ApiPublicCatalogCoverRoute
   '/api/public/crm-media': typeof ApiPublicCrmMediaRoute
   '/api/public/desktop-app': typeof ApiPublicDesktopAppRoute
   '/api/public/header-image': typeof ApiPublicHeaderImageRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/api/public/bot-report-request': typeof ApiPublicBotReportRequestRoute
   '/api/public/bot-ticket': typeof ApiPublicBotTicketRoute
   '/api/public/catalog-assistant': typeof ApiPublicCatalogAssistantRoute
+  '/api/public/catalog-cover': typeof ApiPublicCatalogCoverRoute
   '/api/public/crm-media': typeof ApiPublicCrmMediaRoute
   '/api/public/desktop-app': typeof ApiPublicDesktopAppRoute
   '/api/public/header-image': typeof ApiPublicHeaderImageRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/api/public/bot-report-request'
     | '/api/public/bot-ticket'
     | '/api/public/catalog-assistant'
+    | '/api/public/catalog-cover'
     | '/api/public/crm-media'
     | '/api/public/desktop-app'
     | '/api/public/header-image'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/api/public/bot-report-request'
     | '/api/public/bot-ticket'
     | '/api/public/catalog-assistant'
+    | '/api/public/catalog-cover'
     | '/api/public/crm-media'
     | '/api/public/desktop-app'
     | '/api/public/header-image'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/api/public/bot-report-request'
     | '/api/public/bot-ticket'
     | '/api/public/catalog-assistant'
+    | '/api/public/catalog-cover'
     | '/api/public/crm-media'
     | '/api/public/desktop-app'
     | '/api/public/header-image'
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   ApiPublicBotReportRequestRoute: typeof ApiPublicBotReportRequestRoute
   ApiPublicBotTicketRoute: typeof ApiPublicBotTicketRoute
   ApiPublicCatalogAssistantRoute: typeof ApiPublicCatalogAssistantRoute
+  ApiPublicCatalogCoverRoute: typeof ApiPublicCatalogCoverRoute
   ApiPublicCrmMediaRoute: typeof ApiPublicCrmMediaRoute
   ApiPublicDesktopAppRoute: typeof ApiPublicDesktopAppRoute
   ApiPublicHeaderImageRoute: typeof ApiPublicHeaderImageRoute
@@ -426,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCatalogAssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/catalog-cover': {
+      id: '/api/public/catalog-cover'
+      path: '/api/public/catalog-cover'
+      fullPath: '/api/public/catalog-cover'
+      preLoaderRoute: typeof ApiPublicCatalogCoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/crm-media': {
       id: '/api/public/crm-media'
       path: '/api/public/crm-media'
@@ -484,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBotReportRequestRoute: ApiPublicBotReportRequestRoute,
   ApiPublicBotTicketRoute: ApiPublicBotTicketRoute,
   ApiPublicCatalogAssistantRoute: ApiPublicCatalogAssistantRoute,
+  ApiPublicCatalogCoverRoute: ApiPublicCatalogCoverRoute,
   ApiPublicCrmMediaRoute: ApiPublicCrmMediaRoute,
   ApiPublicDesktopAppRoute: ApiPublicDesktopAppRoute,
   ApiPublicHeaderImageRoute: ApiPublicHeaderImageRoute,
