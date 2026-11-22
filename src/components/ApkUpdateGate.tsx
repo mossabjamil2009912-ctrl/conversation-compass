@@ -8,12 +8,10 @@ const arrivedMoved = typeof window !== "undefined" && new URL(window.location.hr
 export function ApkUpdateGate() {
   const [block, setBlock] = useState(false);
   useEffect(() => {
-    const android = /Android/i.test(navigator.userAgent);
-    const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches
-      || document.referrer.startsWith("android-app://");
-    if (standalone || !android) { localStorage.removeItem(FLAG); return; }
-    if (arrivedMoved) localStorage.setItem(FLAG, "1");
-    setBlock(localStorage.getItem(FLAG) === "1");
+    // Old APK always enters via the legacy host redirect (?moved=1); the new APK opens here directly.
+    localStorage.removeItem(FLAG);
+    if (arrivedMoved && /Android/i.test(navigator.userAgent)) sessionStorage.setItem(FLAG, "1");
+    setBlock(sessionStorage.getItem(FLAG) === "1");
   }, []);
   if (!block) return null;
   return (
