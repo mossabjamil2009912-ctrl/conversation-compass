@@ -32,7 +32,7 @@ const BRANDS = [
   { name: "Deye", terms: ["deye", "داي", "دايا"] },
   { name: "Solis", terms: ["solis", "سوليس"] },
   { name: "Pylontech", terms: ["pylontech", "بايلونتك"] },
-  { name: "HiTHIUM", terms: ["hithium", "هايثيوم", "heroee", "fidus", "فيدوس"] },
+  { name: "HeroEE", terms: ["heroee", "hero ee", "هيرو إي", "هيرو اي"] },
 ];
 const MANUAL = "User Manual";
 const norm = (s: string) =>
@@ -62,7 +62,7 @@ function Catalogs() {
     const b = BRANDS.find((x) => x.name === brand);
     const isManual = (c: { category_id: string | null }) => (c.category_id ? catName.get(c.category_id) ?? "" : "").includes("User Manual");
     if (brand === MANUAL) list = list.filter(isManual);
-    else if (b) list = list.filter((c) => b.terms.some((t) => `${c.title} ${c.keywords}`.toLowerCase().includes(t)));
+    else if (b) list = list.filter((c) => !isManual(c) && b.terms.some((t) => c.title.toLowerCase().includes(t)));
     const words = norm(q).split(/\s+/).filter(Boolean);
     if (words.length) list = list.filter((c) => { const hay = norm(`${c.title} ${c.keywords} ${c.description}`); return words.every((w) => hay.includes(w)); });
     return [...list].sort((a, b2) => a.title.localeCompare(b2.title, "ar"));
