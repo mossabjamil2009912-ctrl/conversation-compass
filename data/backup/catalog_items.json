@@ -225,6 +225,22 @@
   "auto_rules": []
  },
  {
+  "key": "pdf:bat_fidus_pro_5",
+  "kind": "datasheet",
+  "category": "batteries",
+  "category_title": null,
+  "name": "بطارية بايلونتك فيدوس برو 5.12 كيلو",
+  "unit": null,
+  "price": null,
+  "label": "Pylontech_Fidus_Pro_5.12KWh.pdf",
+  "pdf_url": "https://conversation-compass-customer-trails.lovable.app/__l5e/assets-v1/f97e740e-84e1-4ed6-a30b-70a508bed82b/pylontech-fidus-pro-5.12.pdf",
+  "specs": [],
+  "active": true,
+  "sort": 0,
+  "updated_at": "2026-11-22T03:58:56.912013+00:00",
+  "auto_rules": []
+ },
+ {
   "key": "bat_protect_dc1500_250a",
   "kind": "item",
   "category": "battery_controls",

@@ -1748,5 +1748,48 @@
    "product_type": "Hybrid Energy Storage System (ESS)"
   },
   "updated_at": "2026-11-20T22:46:03.046124+00:00"
+ },
+ {
+  "catalog_id": "23e11d6b-8199-485c-8cb6-a1c400ea344c",
+  "summary_ar": "دليل المستخدم لنظام بايلونتك OPTIM US A300-HY: كابينة خارجية متكاملة ببطاريات فوسفات حديد الليثيوم بسعة 300kWh ومحولين هجينين Solis S6-EH3P(30-50)K-H ووحدة UPS؛ يشرح التركيب والتوصيلات الكهربائية والتشغيل الأولي والإعدادات والصيانة واستكشاف الأعطال.",
+  "summary_en": "User manual for the Pylontech OPTIM US A300-HY outdoor LFP energy storage cabinet (300 kWh) with Solis S6-EH3P(30-50)K-H hybrid inverters and UPS: installation, wiring, commissioning, settings, maintenance and troubleshooting.",
+  "specs": {
+   "specs": [
+    {
+     "model": "OPTIM US A300-HY",
+     "key_specs": "User manual, 142 pages; outdoor cabinet, LFP battery strings, MBMS-LC control module, PCS Solis S6-EH3P(30-50)K-H, UPS; installation, commissioning, maintenance, troubleshooting."
+    }
+   ],
+   "models": [
+    "OPTIM US A300-HY",
+    "M5-300kWh",
+    "S6-EH3P(30-50)K-H"
+   ],
+   "summary_ar": "دليل المستخدم لنظام بايلونتك OPTIM US A300-HY: كابينة خارجية متكاملة ببطاريات فوسفات حديد الليثيوم بسعة 300kWh ومحولين هجينين Solis S6-EH3P(30-50)K-H ووحدة UPS؛ يشرح التركيب والتوصيلات الكهربائية والتشغيل الأولي والإعدادات والصيانة واستكشاف الأعطال.",
+   "summary_en": "User manual for the Pylontech OPTIM US A300-HY outdoor LFP energy storage cabinet (300 kWh) with Solis S6-EH3P(30-50)K-H hybrid inverters and UPS: installation, wiring, commissioning, settings, maintenance and troubleshooting.",
+   "product_type": "User Manual"
+  },
+  "updated_at": "2026-11-22T02:13:31.686+00:00"
+ },
+ {
+  "catalog_id": "38dab242-c0e8-4c4c-adec-185edb5102c0",
+  "summary_ar": "بطارية ليثيوم بايلونتك فيدوس برو 5.12 كيلو (FB-L-5.12-EU-Pro)، 51.2 فولت، سعة قابلة للاستخدام 4.86 كيلو، عمق تفريغ 95%، تيار 100 أمبير، 8000 دورة، عمر 15 سنة، IP65، وزن 45 كجم، مقاس 630×170×363 مم.",
+  "summary_en": "Pylontech Fidus Pro FB-L-5.12-EU-Pro: 51.2V, 5.12kWh nominal, 4.86kWh usable, 95% DoD, 100A continuous, 8000 cycles, 15y design life, IP65, 45kg, 630x170x363mm.",
+  "specs": {
+   "ip": "IP65",
+   "dod": "95%",
+   "peak": "200A@15s",
+   "model": "FB-L-5.12-EU-Pro",
+   "cycles": 8000,
+   "usable": "4.86kWh",
+   "weight": "45kg",
+   "current": "100A",
+   "voltage": "51.2V",
+   "capacity": "5.12kWh",
+   "parallel": 20,
+   "dimensions": "630x170x363mm",
+   "design_life": "15y"
+  },
+  "updated_at": "2026-11-22T03:58:56.630985+00:00"
  }
 ]
