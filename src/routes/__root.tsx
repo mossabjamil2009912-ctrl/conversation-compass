@@ -4,7 +4,6 @@ import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persi
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import { registerOfflineWorker } from "../lib/pwa";
 import { UpdateGate } from "../components/UpdateGate";
-import { ApkUpdateGate } from "../components/ApkUpdateGate";
 import { saveShell } from "../lib/offline-shell";
 import { markAppReady } from "../lib/manual-update";
 import {
@@ -167,7 +166,6 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <UpdateGate />
-      <ApkUpdateGate />
     </PersistQueryClientProvider>
   );
 }
