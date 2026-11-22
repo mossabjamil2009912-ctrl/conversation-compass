@@ -22,6 +22,9 @@ export type CatalogItem = {
   cover_url: string | null;
 };
 
+// Signed cover links last 7 days; reuse them for 6 days so each page open skips re-signing.
+const coverCache = new Map<string, { url: string; exp: number }>();
+
 export const listCatalogs = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin: sb } = await import("@/lib/db.server");
   const [{ data: cats }, { data: rows, error }] = await Promise.all([
@@ -30,11 +33,19 @@ export const listCatalogs = createServerFn({ method: "GET" }).handler(async () =
   ]);
   if (error) throw new Error(error.message);
   const list = rows ?? [];
-  const covers = list.map((r) => r.cover_path).filter((p): p is string => !!p);
+  const now = Date.now();
   const urlMap = new Map<string, string>();
-  if (covers.length) {
-    const { data } = await sb.storage.from(BUCKET).createSignedUrls(covers, 60 * 60 * 24 * 7);
-    data?.forEach((d) => d.path && d.signedUrl && urlMap.set(d.path, d.signedUrl));
+  const missing: string[] = [];
+  for (const r of list) {
+    if (!r.cover_path) continue;
+    const hit = coverCache.get(r.cover_path);
+    if (hit && hit.exp > now) urlMap.set(r.cover_path, hit.url); else missing.push(r.cover_path);
+  }
+  if (missing.length) {
+    const { data } = await sb.storage.from(BUCKET).createSignedUrls(missing, 60 * 60 * 24 * 7);
+    data?.forEach((d) => {
+      if (d.path && d.signedUrl) { urlMap.set(d.path, d.signedUrl); coverCache.set(d.path, { url: d.signedUrl, exp: now + 6 * 86400_000 }); }
+    });
   }
   const catalogs: CatalogItem[] = list.map((r) => ({
     id: r.id, title: r.title, description: r.description, keywords: r.keywords,

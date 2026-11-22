@@ -51,6 +51,7 @@ function Catalogs() {
   const navigate = Route.useNavigate();
   const [q, setQ] = useState("");
   const [brand, setBrand] = useState<string | null>(null);
+  const [cat, setCat] = useState<string | null>(null);
   const [pw, setPw] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
   useEffect(() => { setPw(localStorage.getItem("actes_pw")); }, []);
@@ -59,11 +60,12 @@ function Catalogs() {
   const results = useMemo(() => {
     let list = data?.catalogs ?? [];
     const b = BRANDS.find((x) => x.name === brand);
+    if (cat) list = list.filter((c) => c.category_id === cat);
     if (b) list = list.filter((c) => b.terms.some((t) => `${c.title} ${c.keywords}`.toLowerCase().includes(t)));
     const words = norm(q).split(/\s+/).filter(Boolean);
     if (words.length) list = list.filter((c) => { const hay = norm(`${c.title} ${c.keywords} ${c.description}`); return words.every((w) => hay.includes(w)); });
     return [...list].sort((a, b2) => a.title.localeCompare(b2.title, "ar"));
-  }, [data, q, brand]);
+  }, [data, q, brand, cat]);
 
   const open = (id: string | null) => navigate({ search: id ? { id } : {}, replace: false });
 
@@ -86,6 +88,10 @@ function Catalogs() {
           <Search className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث باسم المنتج أو الموديل أو القدرة..."
             className="w-full rounded-2xl border-2 border-border bg-card py-3.5 pl-4 pr-12 text-base shadow-sm outline-none placeholder:text-sm focus:border-primary" />
+        </div>
+        <div className="mb-2 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:justify-center">
+          <Chip on={!cat} onClick={() => setCat(null)}>كل الأقسام</Chip>
+          {(data?.categories ?? []).map((c) => <Chip key={c.id} on={cat === c.id} onClick={() => setCat(c.id)}>{c.name}</Chip>)}
         </div>
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:justify-center">
           <Chip on={!brand} onClick={() => setBrand(null)}>الكل</Chip>
