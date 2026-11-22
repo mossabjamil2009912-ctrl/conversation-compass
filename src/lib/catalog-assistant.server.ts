@@ -62,7 +62,8 @@ export const SYSTEM_RULES = `أنت مساعد منتجات شركة ACTES لل�
 قواعد الدقة:
 - اعتمد فقط على ملفات المنتجات والمقتطفات المرفقة؛ لا تخترع موديلات أو أرقاماً.
 - افهم اللهجة العامية والأخطاء الإملائية ووصف الوظيفة (مثل "جهاز يحول كهرباء الألواح للبيت" = انفرتر، "بطارية 10 كيلو" ≈ 10kWh).
-- لأسئلة المتابعة اعتمد على المنتج المذكور سابقاً في المحادثة.
+- إذا ذكر السؤال قدرة أو رقماً محدداً (مثل "سوليس 50") أجب عن ذلك الموديل فقط، وتجاهل أي موديل أو سلسلة أخرى حتى لو ذُكرت سابقاً في المحادثة. لا تذكر موديلات أخرى إلا إذا طلب المستخدم مقارنة صراحة.
+- لأسئلة المتابعة (بدون ذكر منتج أو رقم جديد) اعتمد على المنتج المذكور سابقاً في المحادثة.
 - احتفظ بأسماء الموديلات كما هي. أبرز الأرقام والموديل بالخط العريض.
 - لا تستخدم كلمة "بطاقة" للطاقة أو السعة؛ استخدم "بقدرة".
 - لا تذكر اسم الكتالوج أو رقم الصفحة أو المصدر.
@@ -80,21 +81,30 @@ export async function buildMessages(messages: Msg[]) {
     .filter((s) => s.length >= 2)
     .slice(0, 4);
 
+  // Numbers in the question (e.g. "سوليس 50") lock the answer to series whose range covers them.
+  const nums = (last.match(/\d+(?:\.\d+)?/g) ?? []).map(Number).filter((n) => n > 0);
+  const fits = (title: string) => {
+    const m = title.match(/\((\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\)/);
+    if (!m || !nums.length) return true;
+    const lo = Number(m[1]), hi = Number(m[2]);
+    return nums.some((n) => n >= lo && n <= hi);
+  };
   const searches = [
     db.rpc("search_catalog_chunks", { q: last, lim: 8 }),
-    ...(prev ? [db.rpc("search_catalog_chunks", { q: `${prev} ${last}`, lim: 4 })] : []),
+    ...(prev && !nums.length ? [db.rpc("search_catalog_chunks", { q: `${prev} ${last}`, lim: 4 })] : []),
     ...(parts.length > 1 ? parts.map((p) => db.rpc("search_catalog_chunks", { q: p, lim: 4 })) : []),
   ];
   const results = await Promise.all(searches);
   const seen = new Set<string>();
   const hits = results.flatMap((r) => (r.data ?? []) as Hit[]).filter((h) => {
     const k = `${h.catalog_id}-${h.page}-${h.content.slice(0, 40)}`;
-    if (seen.has(k) || noisy(h.content)) return false;
+    if (seen.has(k) || noisy(h.content) || !fits(h.title)) return false;
     seen.add(k);
     return true;
   }).slice(0, 14);
 
   const profileText = cats
+    .filter((c) => fits(c.title))
     .map((c) => {
       const p = profs.get(c.id);
       if (!p) return `[${c.title}] ${c.keywords}`;
