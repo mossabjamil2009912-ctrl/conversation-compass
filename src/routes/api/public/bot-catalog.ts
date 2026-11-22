@@ -12,7 +12,16 @@ export const Route = createFileRoute("/api/public/bot-catalog")({
           return new Response("Unauthorized", { status: 401 });
         }
         const { supabaseAdmin } = await import("@/lib/db.server");
-        const { data, error } = await supabaseAdmin.from("catalog_items").select("*").eq("active", true).order("sort");
+        // All six reads run in parallel so the bot waits for the slowest one, not their sum.
+        const [cat, stR, frR, btR, stepsR, hiR] = await Promise.all([
+          supabaseAdmin.from("catalog_items").select("*").eq("active", true).order("sort"),
+          supabaseAdmin.from("app_settings").select("value").eq("key", "kwh_price").maybeSingle(),
+          supabaseAdmin.from("app_settings").select("text_value").eq("key", "formulas").maybeSingle(),
+          supabaseAdmin.from("bot_texts").select("key,kind,original,value,btn_id,desc_value,place"),
+          supabaseAdmin.from("bot_steps").select("id,trigger_id,trigger_title,body,kind,list_button,options").eq("active", true),
+          supabaseAdmin.from("app_settings").select("text_value").eq("key", "header_image").maybeSingle(),
+        ]);
+        const { data, error } = cat;
         if (error) return new Response(error.message, { status: 500 });
         const prices: Record<string, number> = {};
         const items: Record<string, unknown> = {};
@@ -30,15 +39,15 @@ export const Route = createFileRoute("/api/public/bot-catalog")({
             items[r.key] = { name: r.name, unit: r.unit, price: r.price == null ? null : Number(r.price), category: r.category, label: r.label, specs: r.specs };
           }
         }
-        const { data: st } = await supabaseAdmin.from("app_settings").select("value").eq("key", "kwh_price").maybeSingle();
+        const st = stR.data;
         const kwh_price = st ? Number(st.value) : 290;
         const { mergeFormulas } = await import("@/lib/formulas");
-        const { data: fr } = await supabaseAdmin.from("app_settings").select("text_value").eq("key", "formulas").maybeSingle();
+        const fr = frR.data;
         let fv: unknown = null;
         try { fv = fr?.text_value ? JSON.parse(fr.text_value) : null; } catch { fv = null; }
         const FORMULAS = mergeFormulas(fv);
         // Edited bot texts from the "المسار" screen: TEXT = [original fragment, new], BTN = [button id, original title, new title, new desc].
-        const { data: bt } = await supabaseAdmin.from("bot_texts").select("key,kind,original,value,btn_id,desc_value,place");
+        const bt = btR.data;
         const BOT_TEXTS = { TEXT: [] as [string, string][], BTN: [] as [string, string, string | null, string | null][], DEL: [] as [string, string, { msg: string[]; sibs: string[] }][] };
         for (const r of bt ?? []) {
           // Per-step deletes: [button id, original title, scope] — the bot drops the button only in matching messages.
@@ -48,12 +57,12 @@ export const Route = createFileRoute("/api/public/bot-catalog")({
         }
         BOT_TEXTS.TEXT.sort((a, b) => b[0].length - a[0].length);
         // Added steps: shown when the customer presses trigger_id (title matched against original or edited title).
-        const { data: steps } = await supabaseAdmin.from("bot_steps").select("id,trigger_id,trigger_title,body,kind,list_button,options").eq("active", true);
+        const steps = stepsR.data;
         const BOT_STEPS = (steps ?? []).map((s) => {
           const edited = BOT_TEXTS.BTN.find((b) => b[0] === s.trigger_id && b[1] === s.trigger_title)?.[2];
           return { ...s, trigger_titles: [s.trigger_title, edited].filter(Boolean) };
         });
-        const { data: hi } = await supabaseAdmin.from("app_settings").select("text_value").eq("key", "header_image").maybeSingle();
+        const hi = hiR.data;
         let hv = "2";
         try { hv = String(JSON.parse(hi?.text_value ?? "{}").v ?? "2"); } catch { hv = "2"; }
         const HEADER_IMAGE_URL = `${origin}/api/public/header-image?v=${hv}`;
