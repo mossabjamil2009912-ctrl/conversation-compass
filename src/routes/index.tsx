@@ -371,7 +371,7 @@ function Dashboard({ pw, onLogout }: { pw: string; onLogout: () => void }) {
         : view === "tickets" ? <div className="rounded-xl border border-border bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"><Tickets pw={pw} /></div>
         : view === "catalog" ? <div className="rounded-xl border border-border bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"><Catalog pw={pw} /></div>
         : view === "acts" ? <div className="rounded-xl border border-border bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"><ActsAdmin pw={pw} onOpenApp={() => setShowActs(true)} onOpenChat={async (phone, name) => { const r = await openChat({ data: { pw, phone, name } }); await qcAll.invalidateQueries({ queryKey: ["customers"] }); setView("chats"); setOpenId(r.id); }} /></div>
-        : view === "flow" ? <div className="rounded-xl border border-border bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"><FlowPinGate><BotFlow pw={pw} /></FlowPinGate></div>
+        : view === "flow" ? <div className="rounded-xl border border-border bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"><FlowPinGate pw={pw}><BotFlow pw={pw} /></FlowPinGate></div>
         : view === "quote" ? <div className="rounded-xl border border-border bg-background lg:min-h-0 lg:flex-1 lg:overflow-hidden"><QuoteBuilder pw={pw} /></div> : <>
         <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-3">
         <div className="min-w-0 space-y-3 lg:flex lg:min-h-0 lg:flex-col">

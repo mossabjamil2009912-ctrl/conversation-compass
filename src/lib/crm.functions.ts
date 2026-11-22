@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { N8N_URL, DEFAULT_FRONTEND_URL, normalizeServerUrl } from "@/lib/server-url-rules";
 
+const flowCode = () => process.env["FLOW_PIN"] || "2027";
+export const verifyFlowPin = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ pw: z.string(), code: z.string().max(40) }).parse(d))
+  .handler(async ({ data }) => { check(data.pw); return { ok: data.code === flowCode() }; });
+
 function check(pw: string) {
   const real = process.env["DASHBOARD_PASSWORD"];
   if (!real || pw !== real) throw new Error("كلمة المرور غير صحيحة");
@@ -871,7 +876,7 @@ export const saveFormulas = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ pw: z.string(), code: z.string(), formulas: z.record(z.string(), z.unknown()) }).parse(d))
   .handler(async ({ data }) => {
     check(data.pw);
-    if (data.code !== "2027") throw new Error("رمز غير صحيح");
+    if (data.code !== flowCode()) throw new Error("رمز غير صحيح");
     const { mergeFormulas } = await import("@/lib/formulas");
     const f = mergeFormulas(data.formulas);
     const { supabaseAdmin } = await import("@/lib/db.server");

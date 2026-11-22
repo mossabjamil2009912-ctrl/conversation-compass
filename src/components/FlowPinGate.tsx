@@ -1,21 +1,24 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Lock } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { verifyFlowPin } from "@/lib/crm.functions";
 
-const PIN = "2027";
 const KEY = "actes_flow_unlocked";
 
-export function FlowPinGate({ children }: { children: ReactNode }) {
+export function FlowPinGate({ children, pw }: { children: ReactNode; pw: string }) {
   const [ok, setOk] = useState(false);
   const [v, setV] = useState("");
   const [err, setErr] = useState(false);
+  const verify = useServerFn(verifyFlowPin);
 
   useEffect(() => { if (sessionStorage.getItem(KEY) === "1") setOk(true); }, []);
 
   if (ok) return <>{children}</>;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (v === PIN) { sessionStorage.setItem(KEY, "1"); setOk(true); }
+    const r = await verify({ data: { pw, code: v } }).catch(() => ({ ok: false }));
+    if (r.ok) { sessionStorage.setItem(KEY, "1"); setOk(true); }
     else { setErr(true); setV(""); }
   };
 

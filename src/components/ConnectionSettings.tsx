@@ -4,11 +4,12 @@ import { Settings, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { SystemModeDialog } from "@/components/SystemModeDialog";
 import { AppUpdatePanel } from "@/components/AppUpdatePanel";
-import { getFrontendUrl, saveFrontendUrl, testFrontendUrl } from "@/lib/crm.functions";
+import { getFrontendUrl, saveFrontendUrl, testFrontendUrl, verifyFlowPin } from "@/lib/crm.functions";
 
 export function ConnectionSettings({ pw }: { pw: string }) {
   const [open, setOpen] = useState(false);
-  // Hidden: hold the gear 3 seconds → code 2027 → "المعادلات" button.
+  const verifyPin = useServerFn(verifyFlowPin);
+  // Hidden: hold the gear 3 seconds → code (checked on server) → "المعادلات" button.
   const holdT = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
   const [askCode, setAskCode] = useState(false);
@@ -57,7 +58,7 @@ export function ConnectionSettings({ pw }: { pw: string }) {
       {askCode && (
         <div dir="rtl" className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={() => setAskCode(false)}>
           <form className="w-full max-w-xs space-y-2 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-lg" onClick={(e) => e.stopPropagation()}
-            onSubmit={(e) => { e.preventDefault(); if (code === "2027") { setUnlocked(true); setAskCode(false); } else setCode(""); }}>
+            onSubmit={async (e) => { e.preventDefault(); const r = await verifyPin({ data: { pw, code } }).catch(() => ({ ok: false })); if (r.ok) { setUnlocked(true); setAskCode(false); } else setCode(""); }}>
             <h2 className="text-sm font-bold">أدخل الرمز</h2>
             <input autoFocus type="password" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center tracking-widest" />
             <button type="submit" className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">دخول</button>

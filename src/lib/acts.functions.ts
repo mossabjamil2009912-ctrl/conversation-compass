@@ -24,7 +24,8 @@ async function customerFor(phone: string, name: string | null, city: string | nu
     if (error) throw new Error(error.message);
     id = n.id;
   } else {
-    await sb.from("customers").update({ last_message: msg, last_at: now, stage, ...(name ? { name } : {}), ...(city ? { city } : {}) }).eq("id", id);
+    // Public callers can't prove they own this phone: never overwrite an existing customer's name/city/stage.
+    await sb.from("customers").update({ last_message: msg, last_at: now }).eq("id", id);
   }
   await sb.from("messages").insert({ customer_id: id, direction: "customer", kind: "text", text: msg });
   return id;
