@@ -34,6 +34,7 @@ const BRANDS = [
   { name: "Pylontech", terms: ["pylontech", "بايلونتك"] },
   { name: "HiTHIUM", terms: ["hithium", "هايثيوم", "heroee", "fidus", "فيدوس"] },
 ];
+const MANUAL = "User Manual";
 const norm = (s: string) =>
   s.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)).toLowerCase()
     .replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي")
@@ -59,11 +60,13 @@ function Catalogs() {
   const results = useMemo(() => {
     let list = data?.catalogs ?? [];
     const b = BRANDS.find((x) => x.name === brand);
-    if (b) list = list.filter((c) => b.terms.some((t) => `${c.title} ${c.keywords}`.toLowerCase().includes(t)));
+    const isManual = (c: { category_id: string | null }) => (c.category_id ? catName.get(c.category_id) ?? "" : "").includes("User Manual");
+    if (brand === MANUAL) list = list.filter(isManual);
+    else if (b) list = list.filter((c) => b.terms.some((t) => `${c.title} ${c.keywords}`.toLowerCase().includes(t)));
     const words = norm(q).split(/\s+/).filter(Boolean);
     if (words.length) list = list.filter((c) => { const hay = norm(`${c.title} ${c.keywords} ${c.description}`); return words.every((w) => hay.includes(w)); });
     return [...list].sort((a, b2) => a.title.localeCompare(b2.title, "ar"));
-  }, [data, q, brand]);
+  }, [data, q, brand, catName]);
 
   const open = (id: string | null) => navigate({ search: id ? { id } : {}, replace: false });
 
@@ -90,6 +93,7 @@ function Catalogs() {
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:justify-center">
           <Chip on={!brand} onClick={() => setBrand(null)}>الكل</Chip>
           {BRANDS.map((b) => <Chip key={b.name} on={brand === b.name} onClick={() => setBrand(b.name)}>{b.name}</Chip>)}
+          <Chip on={brand === MANUAL} onClick={() => setBrand(MANUAL)}>{MANUAL}</Chip>
         </div>
 
         {isLoading ? (
