@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
 
+// Short in-memory cache: the bot asks often, data changes rarely (edits reach the bot within ~1 min).
+let CACHE: { at: number; origin: string; body: string } | null = null;
+const CACHE_MS = 60_000;
+
 // Single source of truth for the WhatsApp bot: items, prices and datasheet PDF links managed in the dashboard.
 export const Route = createFileRoute("/api/public/bot-catalog")({
   server: {
@@ -10,6 +14,10 @@ export const Route = createFileRoute("/api/public/bot-catalog")({
         const exp = Buffer.from(process.env["BOT_INGEST_SECRET"] ?? "");
         if (!exp.length || got.length !== exp.length || !timingSafeEqual(got, exp)) {
           return new Response("Unauthorized", { status: 401 });
+        }
+        const origin0 = new URL(request.url).origin;
+        if (CACHE && CACHE.origin === origin0 && Date.now() - CACHE.at < CACHE_MS) {
+          return new Response(CACHE.body, { headers: { "content-type": "application/json" } });
         }
         const { supabaseAdmin } = await import("@/lib/db.server");
         // All six reads run in parallel so the bot waits for the slowest one, not their sum.
@@ -66,7 +74,9 @@ export const Route = createFileRoute("/api/public/bot-catalog")({
         let hv = "2";
         try { hv = String(JSON.parse(hi?.text_value ?? "{}").v ?? "2"); } catch { hv = "2"; }
         const HEADER_IMAGE_URL = `${origin}/api/public/header-image?v=${hv}`;
-        return Response.json({ HEADER_IMAGE_URL, settings: { kwh_price }, KWH_PRICE: kwh_price, updated_at: new Date().toISOString(), ITEM_PRICES: prices, ITEMS: items, CATALOG_FILES: files, AUTO_RULES: autoRules, BOT_TEXTS, BOT_STEPS, FORMULAS });
+        const body = JSON.stringify({ HEADER_IMAGE_URL, settings: { kwh_price }, KWH_PRICE: kwh_price, updated_at: new Date().toISOString(), ITEM_PRICES: prices, ITEMS: items, CATALOG_FILES: files, AUTO_RULES: autoRules, BOT_TEXTS, BOT_STEPS, FORMULAS });
+        CACHE = { at: Date.now(), origin, body };
+        return new Response(body, { headers: { "content-type": "application/json" } });
       },
     },
   },
